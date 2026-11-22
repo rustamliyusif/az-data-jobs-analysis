@@ -3,7 +3,7 @@
 I scraped and analyzed **data & analytics vacancies in Azerbaijan** to answer a question every student in this field has:
 *Which skills should I actually learn to get hired here?*
 
-**Tools:** Python · requests · BeautifulSoup · regex-based text extraction (Azerbaijani + English) · pandas · matplotlib · Jupyter
+**Tools:** Python · requests · BeautifulSoup · regex-based text extraction (Azerbaijani + English) · pandas · matplotlib · Jupyter  
 **Data:** [hellojob.az](https://www.hellojob.az), snapshot of **23 Nov 2026**. 171 vacancy pages matched data-related searches; **35 are data & analytics roles**.
 
 ---
