@@ -6,7 +6,7 @@ I scraped and analyzed **data & analytics vacancies in Azerbaijan** to answer a 
 **Tools:** Python · requests · BeautifulSoup · regex-based text extraction (Azerbaijani + English) · pandas · matplotlib · Jupyter  
 **Data:** [hellojob.az](https://www.hellojob.az), snapshot of **23 Nov 2026**. 171 vacancy pages matched data-related searches; **35 are data & analytics roles**.
 
-**Live dashboard:** _link after deploy_ · data refreshes daily via GitHub Actions
+**Live dashboard:** [az-data-jobs.streamlit.app](https://az-data-jobs.streamlit.app) · data refreshes daily via GitHub Actions
 
 ---
 
