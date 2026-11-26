@@ -56,10 +56,34 @@ def build_messages(date: str, rows: pd.DataFrame) -> list[str]:
     return messages
 
 
+WELCOME = (
+    "👋 <b>AZ IT Vakansiyaları</b>\n\n"
+    "Hər gün səhər hellojob.az və boss.az-da yeni çıxan IT vakansiyaları burada paylaşılır.\n\n"
+    f"📊 Bacarıqlar, maaşlar və bütün vakansiyalar: {DASHBOARD}"
+)
+
+
+def send(token: str, chat_id: str, text: str) -> None:
+    response = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", timeout=20,
+                             data={"chat_id": chat_id, "text": text, "parse_mode": "HTML",
+                                   "disable_web_page_preview": "true"})
+    if not response.ok:
+        raise SystemExit(f"Telegram error {response.status_code}: {response.text}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Send today's new IT vacancies to a Telegram channel")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--welcome", action="store_true", help="send the channel introduction message")
     args = parser.parse_args()
+    token, chat_id = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
+
+    if args.welcome:
+        if not token or not chat_id:
+            raise SystemExit("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set")
+        send(token, chat_id, WELCOME)
+        print("Welcome message sent")
+        return
 
     date, rows = new_vacancies()
     if rows.empty:
@@ -69,15 +93,11 @@ def main() -> None:
     if args.dry_run:
         print("\n\n=====\n\n".join(messages))
         return
-    token, chat_id = os.environ.get("TELEGRAM_BOT_TOKEN"), os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
         print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set, skipping")
         return
     for text in messages:
-        response = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", timeout=20,
-                                 data={"chat_id": chat_id, "text": text, "parse_mode": "HTML",
-                                       "disable_web_page_preview": "true"})
-        response.raise_for_status()
+        send(token, chat_id, text)
     print(f"Sent {len(rows)} vacancies in {len(messages)} message(s)")
 
 
