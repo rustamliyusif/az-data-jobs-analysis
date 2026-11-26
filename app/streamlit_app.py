@@ -36,6 +36,9 @@ def load(version: float) -> pd.DataFrame:
     df["salary_mid"] = df[["salary_from", "salary_to"]].mean(axis=1)
     title_junior = df["title"].str.contains(JUNIOR_TITLE, flags=re.I, regex=True, na=False)
     low_exp = (df["min_experience_years"] <= 1) & ~df["seniority"].isin(["Senior", "Lead / Head"])
+    df["posted"] = pd.to_datetime(df["date_posted"], errors="coerce").fillna(df["first_seen"])
+    newest = df["last_seen"].max()
+    df["title"] = df.apply(lambda r: f"🆕 {r['title']}" if r["posted"] >= newest - pd.Timedelta(days=2) else r["title"], axis=1)
     df["experience"] = df["min_experience_years"].map(lambda y: "—" if pd.isna(y) else f"{y:.0f} il")
     df["junior"] = title_junior | (df["seniority"] == "Intern") | low_exp
     df["skills"] = df[SKILL_COLUMNS].apply(lambda r: ", ".join(c for c in SKILL_COLUMNS if r[c] and c not in LANGUAGES), axis=1)
@@ -49,7 +52,7 @@ def vacancy_table(data: pd.DataFrame, extra: dict | None = None) -> None:
     columns = {"title": "Vəzifə", "company": "Şirkət", "role_family": "Rol", "seniority": "Səviyyə",
                "experience": "Təcrübə",
                "salary": "Maaş", "skills": "Bacarıqlar",
-               "first_seen": st.column_config.DateColumn("Tarix", format="DD.MM.YYYY"),
+               "posted": st.column_config.DateColumn("Tarix", format="DD.MM.YYYY"),
                "source": "Mənbə", "url": LINK}
     columns.update(extra or {})
     st.dataframe(data[list(columns)], column_config=columns, hide_index=True, width="stretch")
@@ -166,9 +169,13 @@ with tab_search:
     if companies:
         found = found[found["company"].isin(companies)]
     if recent:
-        found = found[found["first_seen"] >= found["first_seen"].max() - pd.Timedelta(days=7)]
-    st.caption(f"{len(found)} vakansiya")
-    vacancy_table(found.sort_values("first_seen", ascending=False))
+        found = found[found["posted"] >= latest - pd.Timedelta(days=7)]
+    c1, c2 = st.columns([4, 1])
+    c1.caption(f"{len(found)} vakansiya · 🆕 son 2 gündə dərc olunanlar")
+    export = found[["title", "company", "role_family", "seniority", "experience", "salary", "skills", "posted", "source", "url"]]
+    c2.download_button("CSV yüklə", export.assign(title=export["title"].str.removeprefix("🆕 ")).to_csv(index=False).encode("utf-8-sig"),
+                       file_name="az_it_vakansiyalar.csv", mime="text/csv", width="stretch")
+    vacancy_table(found.sort_values("posted", ascending=False))
 
 with tab_junior:
     juniors = view[view["junior"]]
@@ -183,7 +190,7 @@ with tab_junior:
             junior_share = (juniors[SKILL_COLUMNS].drop(columns=LANGUAGES).mean() * 100).round(0)
             bar(junior_share[junior_share > 0].sort_values(ascending=False).head(10), "Junior vakansiyalarda bacarıqlar", "%")
         with right:
-            vacancy_table(juniors.sort_values("first_seen", ascending=False))
+            vacancy_table(juniors.sort_values("posted", ascending=False))
 
 with tab_learn:
     l1, l2 = st.columns([1, 2])
@@ -231,8 +238,8 @@ with tab_trend:
     snapshots = df["last_seen"].nunique()
     if snapshots < 3:
         st.info("Trend qrafikləri üçün ən azı bir neçə günlük data lazımdır. Data hər gün avtomatik yığılır.")
-    weekly = view.set_index("first_seen").resample("W")["id"].count().rename("Yeni vakansiya")
-    fig = px.bar(weekly.reset_index(), x="first_seen", y="Yeni vakansiya", title="Həftəlik yeni vakansiyalar")
+    weekly = view.set_index("posted").resample("W")["id"].count().rename("Yeni vakansiya")
+    fig = px.bar(weekly.reset_index(), x="posted", y="Yeni vakansiya", title="Həftəlik yeni vakansiyalar")
     fig.update_traces(marker_color=BLUE)
     fig.update_layout(xaxis_title=None, margin=dict(l=0, r=0, t=50, b=0))
     st.plotly_chart(fig, width="stretch")
