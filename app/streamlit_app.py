@@ -1,3 +1,4 @@
+import re
 import sys
 from pathlib import Path
 
@@ -14,6 +15,8 @@ SKILL_COLUMNS = list(SKILLS)
 LANGUAGES = ["English", "Russian"]
 SENIORITY_ORDER = ["Intern", "Junior / Mid", "Senior", "Lead / Head"]
 BLUE = "#2a78d6"
+JUNIOR_TITLE = r"junior|trainee|intern|təcrübəçi|təcrübə proqram|kiçik (?:mütəxəssis|proqramçı|analitik|mühəndis|developer)"
+LINK = st.column_config.LinkColumn("Link", display_text="Aç")
 
 st.set_page_config(page_title="AZ IT Jobs", page_icon="📊", layout="wide")
 
@@ -31,7 +34,25 @@ def load(version: float) -> pd.DataFrame:
     for column in ["salary_from", "salary_to"]:
         df[column] = pd.to_numeric(df[column], errors="coerce") if column in df else float("nan")
     df["salary_mid"] = df[["salary_from", "salary_to"]].mean(axis=1)
+    title_junior = df["title"].str.contains(JUNIOR_TITLE, flags=re.I, regex=True, na=False)
+    low_exp = (df["min_experience_years"] <= 1) & ~df["seniority"].isin(["Senior", "Lead / Head"])
+    df["experience"] = df["min_experience_years"].map(lambda y: "—" if pd.isna(y) else f"{y:.0f} il")
+    df["junior"] = title_junior | (df["seniority"] == "Intern") | low_exp
+    df["skills"] = df[SKILL_COLUMNS].apply(lambda r: ", ".join(c for c in SKILL_COLUMNS if r[c] and c not in LANGUAGES), axis=1)
+    df["salary"] = df.apply(lambda r: "" if pd.isna(r["salary_mid"]) else
+                            (f"{r['salary_from']:.0f}" + (f"–{r['salary_to']:.0f}" if r["salary_to"] != r["salary_from"] else "") + " ₼"),
+                            axis=1)
     return df
+
+
+def vacancy_table(data: pd.DataFrame, extra: dict | None = None) -> None:
+    columns = {"title": "Vəzifə", "company": "Şirkət", "role_family": "Rol", "seniority": "Səviyyə",
+               "experience": "Təcrübə",
+               "salary": "Maaş", "skills": "Bacarıqlar",
+               "first_seen": st.column_config.DateColumn("Tarix", format="DD.MM.YYYY"),
+               "source": "Mənbə", "url": LINK}
+    columns.update(extra or {})
+    st.dataframe(data[list(columns)], column_config=columns, hide_index=True, width="stretch")
 
 
 def bar(series: pd.Series, title: str, suffix: str = "") -> None:
@@ -77,8 +98,8 @@ median_exp = view["min_experience_years"].median()
 c3.metric("Minimum təcrübə (median)", f"{median_exp:.0f} il" if pd.notna(median_exp) else "—")
 c4.metric("Maaşı göstərilən", f"{view['salary_disclosed'].mean() * 100:.0f}%")
 
-tab_skills, tab_market, tab_salary, tab_match, tab_trend = st.tabs(
-    ["Bacarıqlar", "Şirkətlər və səviyyə", "Maaşlar", "Mənə uyğun vakansiyalar", "Trend"])
+tab_skills, tab_search, tab_junior, tab_learn, tab_salary, tab_market, tab_trend = st.tabs(
+    ["Bacarıqlar", "Vakansiyalar", "Junior / təcrübəçi", "Nə öyrənməliyəm?", "Maaşlar", "Şirkətlər", "Trend"])
 
 with tab_skills:
     share = (view[SKILL_COLUMNS].mean() * 100).round(0)
@@ -128,31 +149,83 @@ with tab_salary:
                 "title": "Vəzifə", "company": "Şirkət",
                 "salary_from": st.column_config.NumberColumn("Min (₼)", format="%d"),
                 "salary_to": st.column_config.NumberColumn("Max (₼)", format="%d"),
-                "source": "Mənbə", "url": st.column_config.LinkColumn("Link", display_text="Aç"),
+                "source": "Mənbə", "url": LINK,
             },
             hide_index=True, width="stretch",
         )
 
-with tab_match:
-    mine = st.multiselect("Bildiyin bacarıqları seç", SKILL_COLUMNS, default=["SQL", "Python"], placeholder="Bacarıq seç")
-    required = view[SKILL_COLUMNS]
+with tab_search:
+    q1, q2, q3 = st.columns([2, 2, 1])
+    query = q1.text_input("Axtar", placeholder="vəzifə, şirkət və ya bacarıq: Java, ABB, Power BI...")
+    companies = q2.multiselect("Şirkət", sorted(view["company"].dropna().unique()), placeholder="Hamısı")
+    recent = q3.toggle("Son 7 gün", value=False)
+    found = view
+    if query:
+        haystack = found["title"] + " " + found["company"].fillna("") + " " + found["skills"] + " " + found["category"].fillna("")
+        found = found[haystack.str.contains(re.escape(query), case=False, na=False)]
+    if companies:
+        found = found[found["company"].isin(companies)]
+    if recent:
+        found = found[found["first_seen"] >= found["first_seen"].max() - pd.Timedelta(days=7)]
+    st.caption(f"{len(found)} vakansiya")
+    vacancy_table(found.sort_values("first_seen", ascending=False))
+
+with tab_junior:
+    juniors = view[view["junior"]]
+    st.caption("Başlığında junior, təcrübəçi, intern, kiçik mütəxəssis yazılan və ya ən çox 1 il təcrübə istəyən vakansiyalar.")
+    j1, j2, j3 = st.columns(3)
+    j1.metric("Junior vakansiya", len(juniors))
+    j2.metric("Bütün vakansiyaların", f"{len(juniors) / len(view) * 100:.0f}%")
+    j3.metric("Təcrübə proqramı", int(juniors["title"].str.contains("təcrübə proqram|intern|trainee", case=False).sum()))
+    if not juniors.empty:
+        left, right = st.columns([1, 2])
+        with left:
+            junior_share = (juniors[SKILL_COLUMNS].drop(columns=LANGUAGES).mean() * 100).round(0)
+            bar(junior_share[junior_share > 0].sort_values(ascending=False).head(10), "Junior vakansiyalarda bacarıqlar", "%")
+        with right:
+            vacancy_table(juniors.sort_values("first_seen", ascending=False))
+
+with tab_learn:
+    l1, l2 = st.columns([1, 2])
+    roles = view["role_family"].value_counts()
+    target = l1.selectbox("Hədəf rol", ["Bütün rollar"] + roles.index.tolist(),
+                          format_func=lambda r: r if r == "Bütün rollar" else f"{r} ({roles[r]})")
+    mine = l2.multiselect("Bildiyin bacarıqlar", SKILL_COLUMNS, default=["SQL", "Python", "English"], placeholder="Bacarıq seç")
+    pool = view if target == "Bütün rollar" else view[view["role_family"] == target]
+    required = pool[SKILL_COLUMNS]
     needed = required.sum(axis=1)
-    have = required[mine].sum(axis=1) if mine else 0
-    matches = view.assign(
-        uyğunluq=(have / needed.where(needed > 0)).mul(100).round(0),
-        çatışmayan=required.apply(lambda row: ", ".join(s for s in SKILL_COLUMNS if row[s] and s not in mine), axis=1),
-    ).sort_values(["uyğunluq", "min_experience_years"], ascending=[False, True])
-    st.dataframe(
-        matches[["title", "company", "seniority", "min_experience_years", "uyğunluq", "çatışmayan", "url"]],
-        column_config={
-            "title": "Vəzifə", "company": "Şirkət", "seniority": "Səviyyə",
-            "min_experience_years": st.column_config.NumberColumn("Təcrübə (il)", format="%d"),
-            "uyğunluq": st.column_config.ProgressColumn("Uyğunluq", format="%d%%", min_value=0, max_value=100),
-            "çatışmayan": "Çatışmayan bacarıqlar",
-            "url": st.column_config.LinkColumn("Link", display_text="Aç"),
-        },
-        hide_index=True, width="stretch",
-    )
+
+    def ready_count(skills: list[str]) -> int:
+        have = required[skills].sum(axis=1) if skills else 0
+        return int(((needed > 0) & (have / needed.where(needed > 0) >= 0.5)).sum())
+
+    missing = (required.drop(columns=mine).mean() * 100).round(0).sort_values(ascending=False)
+    missing = missing[missing > 0]
+    top3 = missing.head(3).index.tolist()
+    now, later = ready_count(mine), ready_count(mine + top3)
+    m1, m2 = st.columns(2)
+    m1.metric("Tələblərinin yarısını qarşıladığın vakansiyalar", f"{now} / {len(pool)}")
+    if top3:
+        m2.metric(f"{', '.join(top3)} öyrənsən", f"{later} / {len(pool)}", delta=f"+{later - now}")
+    left, right = st.columns([1, 2])
+    with left:
+        if not missing.empty:
+            bar(missing.head(10), "Öyrənməli bacarıqlar (% vakansiya)", "%")
+        else:
+            st.success("Bu rol üzrə tələb olunan bütün bacarıqları seçmisən.")
+    with right:
+        have = required[mine].sum(axis=1) if mine else 0
+        matches = pool.assign(
+            uyğunluq=(have / needed.where(needed > 0)).mul(100).round(0),
+            çatışmayan=required.apply(lambda row: ", ".join(s for s in SKILL_COLUMNS if row[s] and s not in mine), axis=1),
+        ).sort_values(["uyğunluq", "min_experience_years"], ascending=[False, True])
+        st.dataframe(
+            matches[["title", "company", "uyğunluq", "çatışmayan", "url"]],
+            column_config={"title": "Vəzifə", "company": "Şirkət",
+                           "uyğunluq": st.column_config.ProgressColumn("Uyğunluq", format="%d%%", min_value=0, max_value=100),
+                           "çatışmayan": "Çatışmayan bacarıqlar", "url": LINK},
+            hide_index=True, width="stretch",
+        )
 
 with tab_trend:
     snapshots = df["last_seen"].nunique()
