@@ -58,7 +58,8 @@ src/scraper.py        hellojob.az: read the vacancy sitemap → download only va
 src/boss_scraper.py   boss.az: read the IT, web-design and UI/UX category pages (vacancy data incl. salary is embedded as JSON)
 src/features.py       filter IT roles by title → 18 role families, seniority, min. experience, 50+ skill flags
 src/build_dataset.py  new vacancies → features; active ids → last_seen; writes vacancies_history.csv and seen_ids.csv
-app/streamlit_app.py  interactive dashboard: skills, employers, seniority, skill-match search, weekly trend
+app/streamlit_app.py  dashboard: skills, vacancy search, junior roles, what-to-learn analysis, salaries, employers, trend
+src/notify_telegram.py  posts each day's new IT vacancies to a Telegram channel
 .github/workflows/scrape.yml   daily scrape + dataset update, commits changes back to the repo
 notebooks/analysis.ipynb   charts and conclusions
 ```
