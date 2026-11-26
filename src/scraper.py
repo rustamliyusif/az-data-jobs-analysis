@@ -11,8 +11,11 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 BASE_URL = "https://www.hellojob.az"
-QUERIES = ["data", "analitik", "analyst", "analitika", "power bi", "sql", "bi",
-           "məlumat", "tableau", "python", "hesabat"]
+QUERIES = ["data", "analitik", "analyst", "power bi", "sql", "python", "developer", "proqramçı",
+           "backend", "frontend", "full stack", "java", ".net", "php", "javascript", "react", "android",
+           "ios", "flutter", "mobil", "devops", "cloud", "sistem administratoru", "şəbəkə", "network",
+           "kibertəhlükəsizlik", "security", "qa", "tester", "ui/ux", "product owner", "1c", "sap",
+           "texniki dəstək", "IT", "süni intellekt", "machine learning", "software"]
 HEADERS = {"User-Agent": "Mozilla/5.0 (portfolio research project; contact via GitHub)"}
 RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 
@@ -103,7 +106,7 @@ def parse_vacancy(html: str, path: str) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Collect data/analytics vacancies from hellojob.az")
+    parser = argparse.ArgumentParser(description="Collect IT vacancies from hellojob.az")
     parser.add_argument("--delay", type=float, default=0.5, help="seconds between requests")
     args = parser.parse_args()
 

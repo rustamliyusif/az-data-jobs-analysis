@@ -6,7 +6,7 @@ I scraped and analyzed **data & analytics vacancies in Azerbaijan** to answer a 
 **Tools:** Python · requests · BeautifulSoup · regex-based text extraction (Azerbaijani + English) · pandas · matplotlib · Jupyter  
 **Data:** [hellojob.az](https://www.hellojob.az), snapshot of **23 Nov 2026**. 171 vacancy pages matched data-related searches; **35 are data & analytics roles**.
 
-**Live dashboard:** [az-data-jobs.streamlit.app](https://az-data-jobs.streamlit.app) · data refreshes daily via GitHub Actions
+**Live dashboard:** [az-data-jobs.streamlit.app](https://az-data-jobs.streamlit.app) · covers the whole IT job market (developers, DevOps, QA, security, data, design, ERP) and refreshes daily via GitHub Actions. The analysis below is the original data-analyst study from the 23 Nov 2026 snapshot.
 
 ---
 
@@ -54,8 +54,8 @@ I scraped and analyzed **data & analytics vacancies in Azerbaijan** to answer a 
 ## How it works
 
 ```
-src/scraper.py        search hellojob.az for 11 keywords → visit each vacancy → parse JSON-LD + page text
-src/features.py       filter data roles by title → role family, seniority, min. experience, 22 skill flags
+src/scraper.py        search hellojob.az for 38 IT keywords → visit each vacancy → parse JSON-LD + page text
+src/features.py       filter IT roles by title → 18 role families, seniority, min. experience, 50+ skill flags
 src/build_dataset.py  raw JSON → data_roles.csv (latest snapshot) + vacancies_history.csv (first_seen / last_seen per vacancy)
 app/streamlit_app.py  interactive dashboard: skills, employers, seniority, skill-match search, weekly trend
 .github/workflows/scrape.yml   daily scrape + dataset update, commits changes back to the repo
@@ -85,7 +85,7 @@ because they belong to the employers.
 - Keyword matching can miss synonyms or count a skill mentioned as "nice to have" the same as a requirement.
 - Seniority comes from job titles, and banks use "aparıcı / baş mütəxəssis" inconsistently.
 
-**Next step:** add boss.az as a second source, extend the taxonomy to all IT roles, and track how demand for each skill changes over time.
+**Next step:** add boss.az as a second source and track how demand for each skill changes over time.
 
 ---
 
