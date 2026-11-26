@@ -54,9 +54,10 @@ I scraped and analyzed **data & analytics vacancies in Azerbaijan** to answer a 
 ## How it works
 
 ```
-src/scraper.py        search hellojob.az for 38 IT keywords → visit each vacancy → parse JSON-LD + page text
+src/scraper.py        hellojob.az: read the vacancy sitemap → download only vacancies not seen before → parse JSON-LD + page text
+src/boss_scraper.py   boss.az: read the IT, web-design and UI/UX category pages (vacancy data incl. salary is embedded as JSON)
 src/features.py       filter IT roles by title → 18 role families, seniority, min. experience, 50+ skill flags
-src/build_dataset.py  raw JSON → data_roles.csv (latest snapshot) + vacancies_history.csv (first_seen / last_seen per vacancy)
+src/build_dataset.py  new vacancies → features; active ids → last_seen; writes vacancies_history.csv and seen_ids.csv
 app/streamlit_app.py  interactive dashboard: skills, employers, seniority, skill-match search, weekly trend
 .github/workflows/scrape.yml   daily scrape + dataset update, commits changes back to the repo
 notebooks/analysis.ipynb   charts and conclusions
@@ -70,8 +71,9 @@ are matched case-sensitively, so they don't fire inside Azerbaijani words such a
 
 ```bash
 pip install -r requirements.txt
-python src/scraper.py            # writes data/raw/hellojob_vacancies_<date>.json (~3 min, polite delay between requests)
-python src/build_dataset.py      # rebuilds data/processed/data_roles.csv
+python src/scraper.py            # hellojob.az, new vacancies only (add --full to re-download all)
+python src/boss_scraper.py       # boss.az IT categories
+python src/build_dataset.py      # updates data/processed/vacancies_history.csv
 jupyter notebook notebooks/analysis.ipynb
 streamlit run app/streamlit_app.py
 ```
@@ -85,7 +87,7 @@ because they belong to the employers.
 - Keyword matching can miss synonyms or count a skill mentioned as "nice to have" the same as a requirement.
 - Seniority comes from job titles, and banks use "aparıcı / baş mütəxəssis" inconsistently.
 
-**Next step:** add boss.az as a second source and track how demand for each skill changes over time.
+**Next step:** track how demand for each skill changes over time as daily history accumulates.
 
 ---
 

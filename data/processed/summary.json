@@ -1,7 +1,15 @@
 {
-  "snapshot": "2026-11-26",
-  "vacancies_scraped": 187,
-  "it_roles": 90,
-  "salary_disclosed_all": 5,
-  "history_total": 96
+  "hellojob": {
+    "date": "2026-11-27",
+    "active_listings": 639,
+    "downloaded": 639,
+    "it_active": 105
+  },
+  "boss": {
+    "date": "2026-11-27",
+    "active_listings": 16,
+    "downloaded": 16,
+    "it_active": 14
+  },
+  "history_total": 120
 }

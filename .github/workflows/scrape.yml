@@ -27,7 +27,11 @@ jobs:
       - run: pip install requests beautifulsoup4 pandas
 
       - name: Scrape hellojob.az
-        run: python src/scraper.py --delay 1.0
+        run: python src/scraper.py --delay 0.7
+
+      - name: Scrape boss.az
+        continue-on-error: true
+        run: python src/boss_scraper.py
 
       - name: Update dataset
         run: python src/build_dataset.py

@@ -5,6 +5,7 @@ import time
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
@@ -18,6 +19,7 @@ QUERIES = ["data", "analitik", "analyst", "power bi", "sql", "python", "develope
            "texniki dəstək", "IT", "süni intellekt", "machine learning", "software"]
 HEADERS = {"User-Agent": "Mozilla/5.0 (portfolio research project; contact via GitHub)"}
 RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
+SEEN_PATH = Path(__file__).resolve().parents[1] / "data" / "processed" / "seen_ids.csv"
 
 
 def make_session() -> requests.Session:
@@ -42,6 +44,14 @@ def fetch(session: requests.Session, url: str, **kwargs) -> str | None:
 def clean(text: str) -> str:
     text = re.sub(r"https?://\S+", "", text or "")
     return re.sub(r"\s+", " ", text).strip()
+
+
+def sitemap_vacancy_paths(session: requests.Session) -> list[str]:
+    xml = fetch(session, f"{BASE_URL}/vacancies.xml")
+    if xml is None:
+        return []
+    urls = re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", xml)
+    return sorted({u.replace(BASE_URL, "") for u in urls if "/vakansiya/" in u})
 
 
 def collect_vacancy_paths(session: requests.Session, max_pages: int = 6, delay: float = 0.5) -> list[str]:
@@ -105,17 +115,33 @@ def parse_vacancy(html: str, path: str) -> dict:
     }
 
 
+def load_seen(source: str) -> set[str]:
+    if not SEEN_PATH.exists():
+        return set()
+    seen = pd.read_csv(SEEN_PATH, dtype=str)
+    return set(seen.loc[seen["source"] == source, "id"])
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Collect IT vacancies from hellojob.az")
+    parser = argparse.ArgumentParser(description="Collect active vacancies from hellojob.az")
     parser.add_argument("--delay", type=float, default=0.5, help="seconds between requests")
+    parser.add_argument("--full", action="store_true", help="re-download vacancies that were already seen")
     args = parser.parse_args()
 
     session = make_session()
-    paths = collect_vacancy_paths(session, delay=args.delay)
-    print(f"Found {len(paths)} vacancy pages")
+    paths = sitemap_vacancy_paths(session)
+    if not paths:
+        print("Sitemap unavailable, falling back to keyword search")
+        paths = collect_vacancy_paths(session, delay=args.delay)
+    if not paths:
+        raise SystemExit("No vacancy pages found; aborting without writing output")
+    active = [p.replace("/vakansiya/", "") for p in paths]
+    seen = set() if args.full else load_seen("hellojob")
+    todo = [p for p in paths if p.replace("/vakansiya/", "") not in seen]
+    print(f"Found {len(paths)} active vacancies, {len(todo)} new")
 
     rows = []
-    for i, path in enumerate(paths, 1):
+    for i, path in enumerate(todo, 1):
         html = fetch(session, BASE_URL + path)
         time.sleep(args.delay)
         if html is None:
@@ -125,15 +151,13 @@ def main() -> None:
             print(f"  skip {path}: no JobPosting data")
             continue
         rows.append(row)
-        print(f"[{i}/{len(paths)}] {row['title'][:70]}")
-
-    if not rows:
-        raise SystemExit("No vacancies collected; aborting without writing output")
+        print(f"[{i}/{len(todo)}] {row['title'][:70]}")
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
-    out = RAW_DIR / f"hellojob_vacancies_{date.today().isoformat()}.json"
-    out.write_text(json.dumps(rows, ensure_ascii=False, indent=0), encoding="utf-8")
-    print(f"Saved {len(rows)} vacancies to {out}")
+    today = date.today().isoformat()
+    (RAW_DIR / f"hellojob_vacancies_{today}.json").write_text(json.dumps(rows, ensure_ascii=False, indent=0), encoding="utf-8")
+    (RAW_DIR / f"hellojob_active_{today}.txt").write_text("\n".join(active), encoding="utf-8")
+    print(f"Saved {len(rows)} new vacancies and {len(active)} active ids")
 
 
 if __name__ == "__main__":

@@ -25,7 +25,12 @@ def load(version: float) -> pd.DataFrame:
         df[column] = df[column].fillna(False).astype(bool) if column in df else False
     df["first_seen"] = pd.to_datetime(df["first_seen"])
     df["last_seen"] = pd.to_datetime(df["last_seen"])
-    df["url"] = "https://www.hellojob.az/vakansiya/" + df["id"]
+    df["source"] = df["source"].fillna("hellojob")
+    df["url"] = df.apply(lambda r: f"https://boss.az/vacancies/{r['id'].removeprefix('boss-')}" if r["source"] == "boss"
+                         else f"https://www.hellojob.az/vakansiya/{r['id']}", axis=1)
+    for column in ["salary_from", "salary_to"]:
+        df[column] = pd.to_numeric(df[column], errors="coerce") if column in df else float("nan")
+    df["salary_mid"] = df[["salary_from", "salary_to"]].mean(axis=1)
     return df
 
 
@@ -43,15 +48,19 @@ df = load(HISTORY_PATH.stat().st_mtime)
 latest = df["last_seen"].max()
 
 st.title("Azərbaycanda IT vakansiyaları nə tələb edir?")
-st.caption(f"Mənbə: hellojob.az · son yenilənmə: {latest:%d.%m.%Y} · hər gün avtomatik yenilənir")
+st.caption(f"Mənbələr: hellojob.az, boss.az · son yenilənmə: {latest:%d.%m.%Y} · hər gün avtomatik yenilənir")
 
 with st.sidebar:
     st.header("Filtrlər")
     only_active = st.toggle("Yalnız aktiv vakansiyalar", value=True)
+    sources = st.multiselect("Mənbə", sorted(df["source"].unique()), placeholder="Hamısı")
     families = st.multiselect("Rol", sorted(df["role_family"].dropna().unique()), placeholder="Hamısı")
     levels = st.multiselect("Səviyyə", [s for s in SENIORITY_ORDER if s in set(df["seniority"])], placeholder="Hamısı")
 
-view = df[df["last_seen"] == latest] if only_active else df
+latest_by_source = df.groupby("source")["last_seen"].transform("max")
+view = df[df["last_seen"] == latest_by_source] if only_active else df
+if sources:
+    view = view[view["source"].isin(sources)]
 if families:
     view = view[view["role_family"].isin(families)]
 if levels:
@@ -68,8 +77,8 @@ median_exp = view["min_experience_years"].median()
 c3.metric("Minimum təcrübə (median)", f"{median_exp:.0f} il" if pd.notna(median_exp) else "—")
 c4.metric("Maaşı göstərilən", f"{view['salary_disclosed'].mean() * 100:.0f}%")
 
-tab_skills, tab_market, tab_match, tab_trend = st.tabs(
-    ["Bacarıqlar", "Şirkətlər və səviyyə", "Mənə uyğun vakansiyalar", "Trend"])
+tab_skills, tab_market, tab_salary, tab_match, tab_trend = st.tabs(
+    ["Bacarıqlar", "Şirkətlər və səviyyə", "Maaşlar", "Mənə uyğun vakansiyalar", "Trend"])
 
 with tab_skills:
     share = (view[SKILL_COLUMNS].mean() * 100).round(0)
@@ -99,6 +108,30 @@ with tab_market:
         bar(view["seniority"].value_counts().reindex(SENIORITY_ORDER).dropna().astype(int)[::-1],
             "Səviyyə üzrə bölgü")
         bar(view["role_family"].value_counts(), "Rol üzrə bölgü")
+
+with tab_salary:
+    paid = view.dropna(subset=["salary_mid"])
+    st.caption(f"Maaş yalnız {len(paid)} vakansiyada göstərilib ({len(paid) / len(view) * 100:.0f}%). "
+               "Nəticələr bu vakansiyalara əsaslanır və bütün bazarı təmsil etməyə bilər.")
+    if len(paid) >= 3:
+        s1, s2, s3 = st.columns(3)
+        s1.metric("Median maaş", f"{paid['salary_mid'].median():,.0f} ₼")
+        s2.metric("Minimum", f"{paid['salary_from'].min():,.0f} ₼")
+        s3.metric("Maksimum", f"{paid['salary_to'].max():,.0f} ₼")
+        by_role = paid.groupby("role_family")["salary_mid"].agg(["median", "count"])
+        by_role = by_role[by_role["count"] >= 2]["median"].round(0)
+        if not by_role.empty:
+            bar(by_role, "Rol üzrə median maaş (₼, ən azı 2 vakansiya)")
+        st.dataframe(
+            paid.sort_values("salary_mid", ascending=False)[["title", "company", "salary_from", "salary_to", "source", "url"]],
+            column_config={
+                "title": "Vəzifə", "company": "Şirkət",
+                "salary_from": st.column_config.NumberColumn("Min (₼)", format="%d"),
+                "salary_to": st.column_config.NumberColumn("Max (₼)", format="%d"),
+                "source": "Mənbə", "url": st.column_config.LinkColumn("Link", display_text="Aç"),
+            },
+            hide_index=True, width="stretch",
+        )
 
 with tab_match:
     mine = st.multiselect("Bildiyin bacarıqları seç", SKILL_COLUMNS, default=["SQL", "Python"], placeholder="Bacarıq seç")
