@@ -1,0 +1,41 @@
+name: Daily scrape
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install requests beautifulsoup4 pandas
+
+      - name: Scrape hellojob.az
+        run: python src/scraper.py --delay 1.0
+
+      - name: Update dataset
+        run: python src/build_dataset.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
+          git add data/processed
+          git diff --cached --quiet || git commit -m "Data update $(date -u +%F)"
+          git push

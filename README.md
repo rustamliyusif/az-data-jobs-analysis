@@ -6,6 +6,8 @@ I scraped and analyzed **data & analytics vacancies in Azerbaijan** to answer a 
 **Tools:** Python · requests · BeautifulSoup · regex-based text extraction (Azerbaijani + English) · pandas · matplotlib · Jupyter  
 **Data:** [hellojob.az](https://www.hellojob.az), snapshot of **23 Nov 2026**. 171 vacancy pages matched data-related searches; **35 are data & analytics roles**.
 
+**Live dashboard:** _link after deploy_ · data refreshes daily via GitHub Actions
+
 ---
 
 ## Key findings
@@ -54,7 +56,9 @@ I scraped and analyzed **data & analytics vacancies in Azerbaijan** to answer a 
 ```
 src/scraper.py        search hellojob.az for 11 keywords → visit each vacancy → parse JSON-LD + page text
 src/features.py       filter data roles by title → role family, seniority, min. experience, 22 skill flags
-src/build_dataset.py  raw JSON → data/processed/data_roles.csv
+src/build_dataset.py  raw JSON → data_roles.csv (latest snapshot) + vacancies_history.csv (first_seen / last_seen per vacancy)
+app/streamlit_app.py  interactive dashboard: skills, employers, seniority, skill-match search, weekly trend
+.github/workflows/scrape.yml   daily scrape + dataset update, commits changes back to the repo
 notebooks/analysis.ipynb   charts and conclusions
 ```
 
@@ -69,6 +73,7 @@ pip install -r requirements.txt
 python src/scraper.py            # writes data/raw/hellojob_vacancies_<date>.json (~3 min, polite delay between requests)
 python src/build_dataset.py      # rebuilds data/processed/data_roles.csv
 jupyter notebook notebooks/analysis.ipynb
+streamlit run app/streamlit_app.py
 ```
 
 Only the processed, feature-level dataset is committed. Full vacancy texts stay local (`data/raw/` is git-ignored)
@@ -80,7 +85,7 @@ because they belong to the employers.
 - Keyword matching can miss synonyms or count a skill mentioned as "nice to have" the same as a requirement.
 - Seniority comes from job titles, and banks use "aparıcı / baş mütəxəssis" inconsistently.
 
-**Next step:** run the scraper monthly, add boss.az and LinkedIn, and track how demand for each skill changes.
+**Next step:** add boss.az as a second source, extend the taxonomy to all IT roles, and track how demand for each skill changes over time.
 
 ---
 
