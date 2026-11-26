@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from features import build_features
+from features import ROLE_FAMILIES, SENIORITY, build_features, first_match, is_it_role
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw"
@@ -21,6 +21,9 @@ def update_history(snapshot: pd.DataFrame, date: str, source: str = "hellojob") 
     previous = history[["id", "source", "first_seen"]]
     current = current.drop(columns=["first_seen"]).merge(previous, on=["id", "source"], how="left")
     current["first_seen"] = current["first_seen"].fillna(date)
+    history = history[history["title"].apply(is_it_role)].copy()
+    history["role_family"] = history["title"].apply(lambda t: first_match(t, ROLE_FAMILIES))
+    history["seniority"] = history["title"].apply(lambda t: first_match(t, SENIORITY))
     gone = history[~history.set_index(["id", "source"]).index.isin(current.set_index(["id", "source"]).index)]
     return pd.concat([gone, current], ignore_index=True).sort_values(["first_seen", "id"])
 
