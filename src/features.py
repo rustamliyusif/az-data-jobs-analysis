@@ -4,18 +4,18 @@ import pandas as pd
 
 IT_ROLE_PATTERN = (
     r"\bit\b|data|analitik|analyst|analitika|məlumat bazası|reporting|scientist|\bmodel"
-    r"|developer|proqramçı|proqramist|proqram təminatı|tərtibatçı|software|programmer|engineer"
-    r"|backend|back-end|frontend|front-end|full[\s-]?stack|mobil|android|\bios\b|flutter"
+    r"|developer|proqramçı|proqramist|proqramlaşdır|proqram təminatı|tərtibatçı|software|programmer|engineer|infrastruktur"
+    r"|backend|back-end|frontend|front-end|full[\s-]?stack|\bmobil|android|\bios\b|flutter"
     r"|devops|\bsre\b|cloud|bulud|sistem administrator|system administrator|şəbəkə|network"
     r"|kiber|cyber|informasiya təhlükəsizliyi|information security|\bsoc\b|pentest"
     r"|\bqa\b|tester|test mühəndisi|testləşdirmə|quality assurance"
     r"|ui/ux|\bux\b|\bui\b|product designer|web dizayner|veb dizayner"
-    r"|product owner|product manager|məhsul meneceri|scrum master|delivery manager"
+    r"|product owner|product manager|məhsul meneceri|məhsul sahibi|scrum master|delivery manager"
     r"|\b1c\b|\bsap\b|\berp\b|\bcrm\b|texniki dəstək|help ?desk|technical support|service desk"
     r"|\.net|\bjava\b|python|\bphp\b|javascript|react|\bc#|golang|kotlin|swift|odoo|bitrix"
     r"|rəqəmsal|digital|texnologiya|technology|\bai\b|\baİ\b|süni intellekt|machine learning"
 )
-EXCLUDE_PATTERN = r"^satış|kredit|lombard|marketinq|marketing|smm|sürücü|anbar|mühasib|hüquq"
+EXCLUDE_PATTERN = r"^satış|kredit|lombard|marketinq|marketing|smm|sürücü|anbar|mühasib|hüquq|\bmep\b|qa/qc|usta"
 
 SKILLS = {
     "SQL": r"\bsql\b|t-sql|pl/sql",
@@ -76,23 +76,23 @@ CASE_SENSITIVE = {"R", "Go", "Machine learning"}
 
 ROLE_FAMILIES = [
     ("Cybersecurity", r"kiber|cyber|informasiya təhlükəsizliyi|information security|\bsoc\b|pentest|security"),
-    ("QA / Testing", r"\bqa\b|tester|test mühəndisi|testləşdirmə|quality assurance"),
+    ("QA / Testing", r"\bqa\b|\bsdet\b|tester|test mühəndisi|testləşdirmə|quality assurance"),
     ("DevOps / Cloud", r"devops|\bsre\b|cloud|bulud|platform engineer|infrastructure engineer"),
-    ("Data Engineering / Governance", r"data engineer|data arxitekt|data architect|idarəçiliyi|data risk|\betl\b|dwh"),
+    ("Data Engineering / Governance", r"data engineer|data mühəndis|data arxitekt|data architect|idarəçiliyi|data risk|\betl\b|dwh"),
     ("Data Science / AI", r"data elmi|data science|scientist|\bai\b|\baİ\b|machine learning|süni intellekt|\bmodel"),
     ("Business Analyst", r"biznes analitik|business analyst|biznes analitika|sistem analitik|system analyst"),
     ("Reporting / Financial Analyst", r"hesabat|reporting|investment|büdcə"),
-    ("Data Analyst", r"data analitik|data analyst|data analitika|məlumat bazası|analitik|analyst"),
+    ("Data Analyst", r"data mütəxəssis|data analitik|data analyst|data analitika|məlumat bazası|analitik|analyst"),
     ("ERP / 1C / CRM", r"\b1c\b|\bsap\b|\berp\b|\bcrm\b|odoo|bitrix"),
-    ("Mobile Developer", r"mobil.*(developer|proqramçı|tərtibatçı)|android|\bios\b|flutter|kotlin|swift"),
+    ("Mobile Developer", r"\bmobil.*(developer|proqramçı|tərtibatçı)|android|\bios\b|flutter|kotlin|swift"),
     ("Frontend Developer", r"frontend|front-end|react|angular|\bvue"),
     ("Full-stack Developer", r"full[\s-]?stack"),
     ("Backend Developer", r"backend|back-end|\.net|\bjava\b|python|\bphp\b|golang|\bnode"),
-    ("Software Developer", r"developer|proqramçı|proqramist|tərtibatçı|software|programmer|proqram təminatı"),
+    ("Software Developer", r"developer|proqramçı|proqramist|proqramlaşdır|tərtibatçı|software|programmer|proqram təminatı"),
     ("UI/UX Design", r"ui/ux|\bux\b|\bui\b|product designer|web dizayner|veb dizayner"),
-    ("System / Network Admin", r"sistem administrator|system administrator|şəbəkə|network|sistem mühəndisi|system engineer"),
+    ("System / Network Admin", r"infrastruktur|sistem administrator|system administrator|şəbəkə|network|sistem mühəndisi|system engineer"),
     ("IT Support", r"texniki dəstək|help ?desk|technical support|service desk|\bit support|\bit mütəxəssisi|\bit specialist"),
-    ("Product / Project", r"product owner|product manager|məhsul meneceri|scrum master|delivery manager|layihə|project"),
+    ("Product / Project", r"product owner|product manager|məhsul meneceri|məhsul sahibi|scrum master|delivery manager|layihə|project"),
 ]
 
 SENIORITY = [
