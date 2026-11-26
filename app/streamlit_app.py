@@ -15,7 +15,7 @@ LANGUAGES = ["English", "Russian"]
 SENIORITY_ORDER = ["Intern", "Junior / Mid", "Senior", "Lead / Head"]
 BLUE = "#2a78d6"
 
-st.set_page_config(page_title="AZ Data Jobs", page_icon="📊", layout="wide")
+st.set_page_config(page_title="AZ IT Jobs", page_icon="📊", layout="wide")
 
 
 @st.cache_data(ttl=3600)
@@ -42,7 +42,7 @@ def bar(series: pd.Series, title: str, suffix: str = "") -> None:
 df = load()
 latest = df["last_seen"].max()
 
-st.title("Azərbaycanda data vakansiyaları nə tələb edir?")
+st.title("Azərbaycanda IT vakansiyaları nə tələb edir?")
 st.caption(f"Mənbə: hellojob.az · son yenilənmə: {latest:%d.%m.%Y} · hər gün avtomatik yenilənir")
 
 with st.sidebar:
@@ -75,11 +75,14 @@ with tab_skills:
     share = (view[SKILL_COLUMNS].mean() * 100).round(0)
     left, right = st.columns(2)
     with left:
-        bar(share[share > 0].drop(LANGUAGES, errors="ignore"), "Texniki bacarıqlar (% vakansiya)", "%")
+        tech = share.drop(LANGUAGES, errors="ignore")
+        bar(tech[tech > 0].sort_values(ascending=False).head(20), "Ən çox tələb olunan 20 bacarıq (% vakansiya)", "%")
     with right:
         bar(share.reindex(LANGUAGES).fillna(0), "Dil tələbləri (% vakansiya)", "%")
-    by_role = view.groupby("role_family")[SKILL_COLUMNS].mean().mul(100).round(0)
-    by_role = by_role.loc[:, by_role.max() >= 30]
+    top_roles = view["role_family"].value_counts().head(10).index
+    tech_columns = [c for c in SKILL_COLUMNS if c not in LANGUAGES]
+    top_skills = view[tech_columns].mean().sort_values(ascending=False).head(15).index
+    by_role = view[view["role_family"].isin(top_roles)].groupby("role_family")[list(top_skills)].mean().mul(100).round(0)
     if len(by_role) > 1:
         fig = px.imshow(by_role, text_auto=True, aspect="auto", color_continuous_scale="Blues",
                         title="Rol üzrə bacarıqlar (%)")
@@ -91,14 +94,14 @@ with tab_skills:
 with tab_market:
     left, right = st.columns(2)
     with left:
-        bar(view["company"].value_counts().head(12), "Ən çox işə götürən şirkətlər")
+        bar(view["company"].value_counts().head(15), "Ən çox işə götürən şirkətlər")
     with right:
         bar(view["seniority"].value_counts().reindex(SENIORITY_ORDER).dropna().astype(int)[::-1],
             "Səviyyə üzrə bölgü")
         bar(view["role_family"].value_counts(), "Rol üzrə bölgü")
 
 with tab_match:
-    mine = st.multiselect("Bildiyin bacarıqları seç", SKILL_COLUMNS, default=["SQL", "Excel"], placeholder="Bacarıq seç")
+    mine = st.multiselect("Bildiyin bacarıqları seç", SKILL_COLUMNS, default=["SQL", "Python"], placeholder="Bacarıq seç")
     required = view[SKILL_COLUMNS]
     needed = required.sum(axis=1)
     have = required[mine].sum(axis=1) if mine else 0

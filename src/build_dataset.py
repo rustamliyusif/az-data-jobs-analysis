@@ -38,7 +38,7 @@ def main() -> None:
     summary = {
         "snapshot": date,
         "vacancies_scraped": len(raw),
-        "data_roles": len(features),
+        "it_roles": len(features),
         "salary_disclosed_all": int(raw["salary_raw"].str.contains(r"\d").sum()),
         "history_total": len(history),
     }
