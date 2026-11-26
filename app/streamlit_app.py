@@ -22,7 +22,7 @@ st.set_page_config(page_title="AZ IT Jobs", page_icon="📊", layout="wide")
 def load() -> pd.DataFrame:
     df = pd.read_csv(HISTORY_PATH, dtype={"first_seen": str, "last_seen": str})
     for column in SKILL_COLUMNS:
-        df[column] = df[column].fillna(False).astype(bool)
+        df[column] = df[column].fillna(False).astype(bool) if column in df else False
     df["first_seen"] = pd.to_datetime(df["first_seen"])
     df["last_seen"] = pd.to_datetime(df["last_seen"])
     df["url"] = "https://www.hellojob.az/vakansiya/" + df["id"]
