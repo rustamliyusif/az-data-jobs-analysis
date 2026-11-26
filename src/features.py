@@ -4,18 +4,20 @@ import pandas as pd
 
 IT_ROLE_PATTERN = (
     r"\bit\b|data|analitik|analyst|analitika|məlumat bazası|reporting|scientist|\bmodel"
-    r"|developer|proqramçı|proqramist|proqramlaşdır|proqram təminatı|tərtibatçı|software|programmer|engineer|infrastruktur"
+    r"|developer|proqramçı|proqramist|proqramlaşdır|proqram təminatı|tərtibatçı|software|programmer"
     r"|backend|back-end|frontend|front-end|full[\s-]?stack|\bmobil|android|\bios\b|flutter"
-    r"|devops|\bsre\b|cloud|bulud|sistem administrator|system administrator|şəbəkə|network"
+    r"|devops|\bsre\b|cloud|bulud|sistem administrator|system administrator|inzibatçı|şəbəkə|network"
     r"|kiber|cyber|informasiya təhlükəsizliyi|information security|\bsoc\b|pentest"
     r"|\bqa\b|tester|test mühəndisi|testləşdirmə|quality assurance"
     r"|ui/ux|\bux\b|\bui\b|product designer|web dizayner|veb dizayner"
     r"|product owner|product manager|məhsul meneceri|məhsul sahibi|scrum master|delivery manager"
     r"|\b1c\b|\bsap\b|\berp\b|\bcrm\b|texniki dəstək|help ?desk|technical support|service desk"
     r"|\.net|\bjava\b|python|\bphp\b|javascript|react|\bc#|golang|kotlin|swift|odoo|bitrix"
-    r"|rəqəmsal|digital|texnologiya|technology|\bai\b|\baİ\b|süni intellekt|machine learning"
+    r"|\bai\b|\baİ\b|süni intellekt|machine learning"
 )
-EXCLUDE_PATTERN = r"^satış|kredit|lombard|marketinq|marketing|smm|sürücü|anbar|mühasib|hüquq|\bmep\b|qa/qc|usta"
+IT_CATEGORY_PATTERN = (r"Texnologiya|Veb[ -]dizayn|UI/UX|İnformasiya texnologiyaları|Proqramlaşdırma|Sistem idarəetməsi"
+                       r"|\bİT mütəxəssisi|\bİT layihələrin|Məlumat bazasının|Texniki avadanlıq|Proqram təminatı")
+EXCLUDE_PATTERN = r"^satış|kredit|lombard|marketinq|marketing|smm|sürücü|anbar|mühasib|hüquq|\bmep\b|qa/qc|usta|kassir|tikinti|smeta|hovuz|havalandırma|mexanik|lokomotiv|avtoelektrik|konsolidasiya"
 
 SKILLS = {
     "SQL": r"\bsql\b|t-sql|pl/sql",
@@ -75,8 +77,8 @@ SKILLS = {
 CASE_SENSITIVE = {"R", "Go", "Machine learning"}
 
 ROLE_FAMILIES = [
-    ("Cybersecurity", r"kiber|cyber|informasiya təhlükəsizliyi|information security|\bsoc\b|pentest|security"),
-    ("QA / Testing", r"\bqa\b|\bsdet\b|tester|test mühəndisi|testləşdirmə|quality assurance"),
+    ("Cybersecurity", r"\bit risk|\bİT risk|təhlükəsizlik|kiber|cyber|informasiya təhlükəsizliyi|information security|\bsoc\b|pentest|security"),
+    ("QA / Testing", r"\btest |\bqa\b|\bsdet\b|tester|test mühəndisi|testləşdirmə|quality assurance"),
     ("DevOps / Cloud", r"devops|\bsre\b|cloud|bulud|platform engineer|infrastructure engineer"),
     ("Data Engineering / Governance", r"data engineer|data mühəndis|data arxitekt|data architect|idarəçiliyi|data risk|\betl\b|dwh"),
     ("Data Science / AI", r"data elmi|data science|scientist|\bai\b|\baİ\b|machine learning|süni intellekt|\bmodel"),
@@ -90,8 +92,8 @@ ROLE_FAMILIES = [
     ("Backend Developer", r"backend|back-end|\.net|\bjava\b|python|\bphp\b|golang|\bnode"),
     ("Software Developer", r"developer|proqramçı|proqramist|proqramlaşdır|tərtibatçı|software|programmer|proqram təminatı"),
     ("UI/UX Design", r"ui/ux|\bux\b|\bui\b|product designer|web dizayner|veb dizayner"),
-    ("System / Network Admin", r"infrastruktur|sistem administrator|system administrator|şəbəkə|network|sistem mühəndisi|system engineer"),
-    ("IT Support", r"texniki dəstək|help ?desk|technical support|service desk|\bit support|\bit mütəxəssisi|\bit specialist"),
+    ("System / Network Admin", r"sistemlərinin idarə|voip|asterisk|infrastruktur|inzibatçı|sistem idarə|sistem administrator|system administrator|şəbəkə|network|sistem mühəndisi|system engineer"),
+    ("IT Support / Hardware", r"texnik|zəif axın|cctv|avadanlıq|компьют|ремонт|texniki dəstək|help ?desk|technical support|service desk|elektronika|\bit support|\bit mütəxəssis|\bit üzrə mütəxəssis|\bit specialist"),
     ("Product / Project", r"product owner|product manager|məhsul meneceri|məhsul sahibi|scrum master|delivery manager|layihə|project"),
 ]
 
@@ -103,8 +105,10 @@ SENIORITY = [
 ]
 
 
-def is_it_role(title: str) -> bool:
-    return bool(re.search(IT_ROLE_PATTERN, title, re.I)) and not re.search(EXCLUDE_PATTERN, title, re.I)
+def is_it_role(title: str, category: str = "") -> bool:
+    if re.search(EXCLUDE_PATTERN, title, re.I):
+        return False
+    return bool(re.search(IT_CATEGORY_PATTERN, category or "", re.I)) or bool(re.search(IT_ROLE_PATTERN, title, re.I))
 
 
 def first_match(text: str, rules: list[tuple[str, str]], default: str = "Other IT") -> str:
@@ -133,15 +137,30 @@ def salary_disclosed(salary_raw: str) -> bool:
     return bool(re.search(r"\d", salary_raw or ""))
 
 
+def parse_salary(salary_raw: str) -> tuple[float | None, float | None]:
+    numbers = [float(n.replace(" ", "")) for n in re.findall(r"\d[\d ]*\d|\d", salary_raw or "")]
+    numbers = [n for n in numbers if 100 <= n <= 50000]
+    if not numbers:
+        return None, None
+    return min(numbers), max(numbers)
+
+
 def build_features(raw: pd.DataFrame) -> pd.DataFrame:
-    df = raw[raw["title"].apply(is_it_role)].copy()
+    raw = raw.assign(category=raw["category"].fillna("") if "category" in raw else "")
+    df = raw[[is_it_role(t, c) for t, c in zip(raw["title"], raw["category"])]].copy()
     text = df["title"] + " " + df["description"]
     df["role_family"] = df["title"].apply(lambda t: first_match(t, ROLE_FAMILIES))
     df["seniority"] = df["title"].apply(lambda t: first_match(t, SENIORITY))
     df["min_experience_years"] = text.apply(min_experience_years)
     df["salary_disclosed"] = df["salary_raw"].apply(salary_disclosed)
+    parsed = df["salary_raw"].apply(parse_salary)
+    df["salary_from"] = df["salary_from"] if "salary_from" in df else parsed.str[0]
+    df["salary_to"] = df["salary_to"] if "salary_to" in df else parsed.str[1]
+    df["salary_from"] = pd.to_numeric(df["salary_from"], errors="coerce").fillna(parsed.str[0])
+    df["salary_to"] = pd.to_numeric(df["salary_to"], errors="coerce").fillna(parsed.str[1])
     skills = pd.DataFrame(text.apply(extract_skills).tolist(), index=df.index)
     df["id"] = df["slug"].str.strip()
-    columns = ["id", "title", "company", "date_posted", "valid_through", "city",
-               "role_family", "seniority", "min_experience_years", "salary_disclosed"]
+    df["category"] = df["category"].str.replace(r"^Ana səhifə > Vakansiyalar > ", "", regex=True)
+    columns = ["id", "title", "company", "category", "date_posted", "valid_through", "city",
+               "role_family", "seniority", "min_experience_years", "salary_disclosed", "salary_from", "salary_to"]
     return pd.concat([df[columns], skills], axis=1).reset_index(drop=True)
