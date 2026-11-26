@@ -18,8 +18,8 @@ BLUE = "#2a78d6"
 st.set_page_config(page_title="AZ IT Jobs", page_icon="📊", layout="wide")
 
 
-@st.cache_data(ttl=3600)
-def load() -> pd.DataFrame:
+@st.cache_data
+def load(version: float) -> pd.DataFrame:
     df = pd.read_csv(HISTORY_PATH, dtype={"first_seen": str, "last_seen": str})
     for column in SKILL_COLUMNS:
         df[column] = df[column].fillna(False).astype(bool) if column in df else False
@@ -39,7 +39,7 @@ def bar(series: pd.Series, title: str, suffix: str = "") -> None:
     st.plotly_chart(fig, width="stretch")
 
 
-df = load()
+df = load(HISTORY_PATH.stat().st_mtime)
 latest = df["last_seen"].max()
 
 st.title("Azərbaycanda IT vakansiyaları nə tələb edir?")
