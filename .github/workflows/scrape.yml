@@ -33,6 +33,10 @@ jobs:
         continue-on-error: true
         run: python src/boss_scraper.py
 
+      - name: Scrape busy.az
+        continue-on-error: true
+        run: python src/busy_scraper.py --delay 0.7
+
       - name: Update dataset
         run: python src/build_dataset.py
 

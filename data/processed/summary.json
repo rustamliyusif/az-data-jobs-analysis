@@ -1,15 +1,9 @@
 {
-  "hellojob": {
-    "date": "2026-11-27",
-    "active_listings": 631,
-    "downloaded": 12,
-    "it_active": 110
+  "busy": {
+    "date": "2026-11-28",
+    "active_listings": 1444,
+    "downloaded": 1395,
+    "it_active": 65
   },
-  "boss": {
-    "date": "2026-11-27",
-    "active_listings": 16,
-    "downloaded": 16,
-    "it_active": 14
-  },
-  "history_total": 125
+  "history_total": 190
 }

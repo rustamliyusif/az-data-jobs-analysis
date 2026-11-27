@@ -66,8 +66,10 @@ def load(version: float) -> pd.DataFrame:
     df["first_seen"] = pd.to_datetime(df["first_seen"])
     df["last_seen"] = pd.to_datetime(df["last_seen"])
     df["source"] = df["source"].fillna("hellojob")
-    df["url"] = df.apply(lambda r: f"https://boss.az/vacancies/{r['id'].removeprefix('boss-')}" if r["source"] == "boss"
-                         else f"https://www.hellojob.az/vakansiya/{r['id']}", axis=1)
+    df["url"] = df.apply(vacancy_url, axis=1)
+    if "dup_key" not in df:
+        df["dup_key"] = df["id"]
+    df["work_format"] = df["work_format"].fillna("—") if "work_format" in df else "—"
     for column in ["salary_from", "salary_to"]:
         df[column] = pd.to_numeric(df[column], errors="coerce") if column in df else float("nan")
     df["salary_mid"] = df[["salary_from", "salary_to"]].mean(axis=1)
@@ -78,12 +80,33 @@ def load(version: float) -> pd.DataFrame:
     title_junior = df["title"].str.contains(JUNIOR_TITLE, flags=re.I, regex=True, na=False)
     low_exp = (df["min_experience_years"] <= 1) & ~df["seniority"].isin(["Senior", "Lead / Head"])
     df["junior"] = title_junior | (df["seniority"] == "Intern") | low_exp
+    df["age_days"] = (df["last_seen"] - df["posted"]).dt.days.clip(lower=0)
+    df["freshness"] = df["age_days"].map(lambda d: f"⚠️ {d} gün" if d > 60 else f"{d} gün")
     df["experience"] = df["min_experience_years"].map(lambda y: "—" if pd.isna(y) else f"{y:.0f} il")
     df["skills"] = df[TECH_COLUMNS].apply(lambda r: ", ".join(c for c in TECH_COLUMNS if r[c]), axis=1)
     df["salary"] = df.apply(lambda r: "" if pd.isna(r["salary_mid"]) else
                             f"{r['salary_from']:.0f}" + ("" if r["salary_to"] == r["salary_from"] else f"–{r['salary_to']:.0f}") + " ₼",
                             axis=1)
     return df
+
+
+SOURCE_NAMES = {"hellojob": "hellojob.az", "boss": "boss.az", "busy": "busy.az"}
+SOURCE_PRIORITY = {"hellojob": 0, "busy": 1, "boss": 2}
+
+
+def vacancy_url(row: pd.Series) -> str:
+    if row["source"] == "boss":
+        return f"https://boss.az/vacancies/{row['id'].removeprefix('boss-')}"
+    if row["source"] == "busy":
+        return f"https://busy.az/vacancy/{row['id'].removeprefix('busy-')}"
+    return f"https://www.hellojob.az/vakansiya/{row['id']}"
+
+
+def deduplicate(data: pd.DataFrame) -> pd.DataFrame:
+    sources = data.groupby("dup_key")["source"].agg(lambda s: ", ".join(sorted(SOURCE_NAMES.get(x, x) for x in set(s))))
+    ranked = data.assign(_salary=data["salary_mid"].isna(), _priority=data["source"].map(SOURCE_PRIORITY).fillna(9))
+    unique = ranked.sort_values(["_salary", "_priority"]).drop_duplicates("dup_key").drop(columns=["_salary", "_priority"])
+    return unique.assign(sources=unique["dup_key"].map(sources))
 
 
 def style(fig, height: int) -> None:
@@ -116,8 +139,10 @@ def plain_bars(series: pd.Series, suffix: str = "") -> None:
 
 def vacancy_table(data: pd.DataFrame) -> None:
     columns = {"title_display": "Vəzifə", "company": "Şirkət", "role_family": "Rol", "experience": "Təcrübə",
-               "salary": "Maaş", "skills": "Bacarıqlar",
+               "salary": "Maaş", "work_format": "Format", "skills": "Bacarıqlar",
                "posted": st.column_config.DateColumn("Tarix", format="DD.MM.YYYY"),
+               "freshness": st.column_config.TextColumn("Aktivdir", help="Elan dərc olunandan bəri neçə gündür açıqdır. ⚠️ 60 gündən çox açıq qalan elanlar köhnəlmiş ola bilər."),
+               "sources": "Mənbə",
                "url": st.column_config.LinkColumn("Elan", display_text="Aç")}
     st.dataframe(data[list(columns)], column_config=columns, hide_index=True, width="stretch")
 
@@ -141,19 +166,28 @@ def best_next(pool: pd.DataFrame, skills: list[str]) -> tuple[str | None, int]:
 
 df = load(HISTORY_PATH.stat().st_mtime)
 latest = df["last_seen"].max()
-active = df[df["last_seen"] == df.groupby("source")["last_seen"].transform("max")]
+active = deduplicate(df[df["last_seen"] == df.groupby("source")["last_seen"].transform("max")])
 
 with st.sidebar:
     st.subheader("Filtrlər")
     only_active = st.toggle("Yalnız aktiv vakansiyalar", value=True)
     sources = st.multiselect("Mənbə", sorted(df["source"].unique()), placeholder="Hamısı",
-                             format_func=lambda s: {"hellojob": "hellojob.az", "boss": "boss.az"}.get(s, s))
+                             format_func=lambda s: SOURCE_NAMES.get(s, s))
+    formats = st.multiselect("İş formatı", ["Ofis", "Hibrid", "Remote"], placeholder="Hamısı")
+    no_russian = st.toggle("Rus dili tələb olunmayanlar")
+    no_english = st.toggle("İngilis dili tələb olunmayanlar")
     families = st.multiselect("Rol", sorted(df["role_family"].dropna().unique()), placeholder="Hamısı")
     levels = st.multiselect("Səviyyə", [s for s in SENIORITY_ORDER if s in set(df["seniority"])], placeholder="Hamısı")
 
-view = active if only_active else df
+view = active if only_active else deduplicate(df)
+if formats:
+    view = view[view["work_format"].isin(formats)]
+if no_russian:
+    view = view[~view["Russian"]]
+if no_english:
+    view = view[~view["English"]]
 if sources:
-    view = view[view["source"].isin(sources)]
+    view = view[view["sources"].apply(lambda v: any(SOURCE_NAMES.get(src, src) in v for src in sources))]
 if families:
     view = view[view["role_family"].isin(families)]
 if levels:
@@ -162,7 +196,7 @@ if levels:
 st.html(f"""
 <div class="hero">
   <h1>Bakıda bu gün <span class="count">{len(active)}</span> IT vakansiyası açıqdır.</h1>
-  <p>{active['company'].nunique()} şirkətin elanlarını hellojob.az və boss.az-dan hər səhər yığırıq və
+  <p>{active['company'].nunique()} şirkətin elanlarını hellojob.az, busy.az və boss.az-dan hər səhər yığırıq, eyni elanın təkrarlarını birləşdiririk və
      hər elandan bacarıqları çıxarırıq. Bildiyin bacarıqları seç, bazarın sənə nə dediyinə bax.</p>
 </div>
 """)
@@ -172,9 +206,10 @@ if view.empty:
     st.stop()
 
 demand = (view[TECH_COLUMNS].mean() * 100).sort_values(ascending=False)
-pickable = demand[demand > 0].head(24).index.tolist() + LANGUAGES
+market_demand = (active[TECH_COLUMNS].mean() * 100).sort_values(ascending=False)
+pickable = market_demand[market_demand > 0].head(24).index.tolist() + LANGUAGES
 st.html('<h3 class="ask">Nə bilirsən?</h3>')
-mine = st.pills("Nə bilirsən?", pickable, label_visibility="collapsed", selection_mode="multi", default=["SQL", "Python", "English"], key="mine")
+mine = st.pills("Nə bilirsən?", pickable, label_visibility="collapsed", selection_mode="multi", default=[s for s in ["SQL", "Python", "English"] if s in pickable], key="mine")
 mine = list(mine or [])
 
 ready = int((coverage(view, mine) >= MATCH_SHARE).sum())
@@ -241,7 +276,7 @@ with tab_search:
         found = found[found["posted"] >= latest - pd.Timedelta(days=7)]
     c1, c2 = st.columns([4, 1], vertical_alignment="center")
     c1.caption(f"{len(found)} vakansiya. 🆕 son 2 gündə dərc olunub.")
-    export = found[["title", "company", "role_family", "seniority", "experience", "salary", "skills", "posted", "source", "url"]]
+    export = found[["title", "company", "role_family", "seniority", "experience", "salary", "work_format", "skills", "posted", "sources", "url"]]
     c2.download_button("CSV yüklə", export.to_csv(index=False).encode("utf-8-sig"),
                        file_name="az_it_vakansiyalar.csv", mime="text/csv", width="stretch")
     if found.empty:
