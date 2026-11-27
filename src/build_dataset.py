@@ -4,14 +4,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from features import ROLE_FAMILIES, SENIORITY, build_features, first_match, is_it_role
+from features import ROLE_FAMILIES, SENIORITY, build_features, duplicate_key, first_match, is_it_role
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw"
 PROCESSED = ROOT / "data" / "processed"
 HISTORY_PATH = PROCESSED / "vacancies_history.csv"
 SEEN_PATH = PROCESSED / "seen_ids.csv"
-SOURCES = ["hellojob", "boss"]
+SOURCES = ["hellojob", "boss", "busy"]
 
 
 def latest_date(source: str) -> str | None:
@@ -31,6 +31,7 @@ def relabel(history: pd.DataFrame) -> pd.DataFrame:
     history = history[[is_it_role(t, c) for t, c in zip(history["title"], categories)]].copy()
     history["role_family"] = history["title"].apply(lambda t: first_match(t, ROLE_FAMILIES))
     history["seniority"] = history["title"].apply(lambda t: first_match(t, SENIORITY))
+    history["dup_key"] = [duplicate_key(t, c) for t, c in zip(history["title"], history["company"].fillna(""))]
     return history
 
 

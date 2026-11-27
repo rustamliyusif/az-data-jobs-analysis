@@ -56,6 +56,7 @@ I scraped and analyzed **data & analytics vacancies in Azerbaijan** to answer a 
 ```
 src/scraper.py        hellojob.az: read the vacancy sitemap → download only vacancies not seen before → parse JSON-LD + page text
 src/boss_scraper.py   boss.az: read the IT, web-design and UI/UX category pages (vacancy data incl. salary is embedded as JSON)
+src/busy_scraper.py   busy.az: read the live-vacancies sitemap → download only new vacancies → parse JSON-LD (salary included)
 src/features.py       filter IT roles by title → 18 role families, seniority, min. experience, 50+ skill flags
 src/build_dataset.py  new vacancies → features; active ids → last_seen; writes vacancies_history.csv and seen_ids.csv
 app/streamlit_app.py  dashboard: skills, vacancy search, junior roles, what-to-learn analysis, salaries, employers, trend
@@ -74,6 +75,7 @@ are matched case-sensitively, so they don't fire inside Azerbaijani words such a
 pip install -r requirements.txt
 python src/scraper.py            # hellojob.az, new vacancies only (add --full to re-download all)
 python src/boss_scraper.py       # boss.az IT categories
+python src/busy_scraper.py       # busy.az, new vacancies only
 python src/build_dataset.py      # updates data/processed/vacancies_history.csv
 jupyter notebook notebooks/analysis.ipynb
 streamlit run app/streamlit_app.py

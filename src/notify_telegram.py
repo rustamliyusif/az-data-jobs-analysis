@@ -18,6 +18,8 @@ CHUNK = 3800
 def vacancy_url(row: pd.Series) -> str:
     if row["source"] == "boss":
         return f"https://boss.az/vacancies/{row['id'].removeprefix('boss-')}"
+    if row["source"] == "busy":
+        return f"https://busy.az/vacancy/{row['id'].removeprefix('busy-')}"
     return f"https://www.hellojob.az/vakansiya/{row['id']}"
 
 
@@ -32,8 +34,14 @@ def new_vacancies() -> tuple[str, pd.DataFrame]:
     summary = json.loads(SUMMARY_PATH.read_text())
     dates = {source: stats["date"] for source, stats in summary.items() if isinstance(stats, dict)}
     history = pd.read_csv(HISTORY_PATH, dtype={"first_seen": str, "last_seen": str})
-    is_new = history.apply(lambda r: dates.get(r["source"]) == r["first_seen"], axis=1)
-    return max(dates.values()), history[is_new].sort_values(["role_family", "title"])
+    first_crawl = history.groupby("source")["first_seen"].min()
+    established = {s for s, d in dates.items() if first_crawl.get(s, d) < d}
+    is_new = history.apply(lambda r: r["source"] in established and dates.get(r["source"]) == r["first_seen"], axis=1)
+    new = history[is_new]
+    if "dup_key" in history:
+        known = set(history.loc[~is_new, "dup_key"])
+        new = new[~new["dup_key"].isin(known)].drop_duplicates("dup_key")
+    return max(dates.values()), new.sort_values(["role_family", "title"])
 
 
 def build_messages(date: str, rows: pd.DataFrame) -> list[str]:
@@ -58,7 +66,7 @@ def build_messages(date: str, rows: pd.DataFrame) -> list[str]:
 
 WELCOME = (
     "👋 <b>AZ IT Vakansiyaları</b>\n\n"
-    "Hər gün səhər saat 08:00 radələrində hellojob.az və boss.az-da yeni çıxan IT vakansiyaları burada paylaşılır.\n\n"
+    "Hər gün səhər saat 08:00 radələrində hellojob.az, busy.az və boss.az-da yeni çıxan IT vakansiyaları burada paylaşılır.\n\n"
     f"📊 Bacarıqlar, maaşlar və bütün vakansiyalar: {DASHBOARD}"
 )
 

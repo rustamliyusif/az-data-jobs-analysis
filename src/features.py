@@ -6,7 +6,7 @@ IT_ROLE_PATTERN = (
     r"\bit\b|data|analitik|analyst|analitika|məlumat bazası|reporting|scientist|\bmodel"
     r"|developer|proqramçı|proqramist|proqramlaşdır|proqram təminatı|tərtibatçı|software|programmer"
     r"|backend|back-end|frontend|front-end|full[\s-]?stack|\bmobil|android|\bios\b|flutter"
-    r"|devops|\bsre\b|cloud|bulud|sistem administrator|system administrator|inzibatçı|şəbəkə|network"
+    r"|devops|\bsre\b|cloud|bulud|sistem administrator|system administrator|sistem inzibatçı|şəbəkə|network"
     r"|kiber|cyber|informasiya təhlükəsizliyi|information security|\bsoc\b|pentest"
     r"|\bqa\b|tester|test mühəndisi|testləşdirmə|quality assurance"
     r"|ui/ux|\bux\b|\bui\b|product designer|web dizayner|veb dizayner"
@@ -16,8 +16,11 @@ IT_ROLE_PATTERN = (
     r"|\bai\b|\baİ\b|süni intellekt|machine learning"
 )
 IT_CATEGORY_PATTERN = (r"Texnologiya|Veb[ -]dizayn|UI/UX|İnformasiya texnologiyaları|Proqramlaşdırma|Sistem idarəetməsi"
-                       r"|\bİT mütəxəssisi|\bİT layihələrin|Məlumat bazasının|Texniki avadanlıq|Proqram təminatı")
-EXCLUDE_PATTERN = r"^satış|kredit|lombard|marketinq|marketing|smm|sürücü|anbar|mühasib|hüquq|\bmep\b|qa/qc|usta|kassir|tikinti|smeta|hovuz|havalandırma|mexanik|lokomotiv|avtoelektrik|konsolidasiya"
+                       r"|\bİT mütəxəssisi|\bİT layihələrin|Məlumat bazasının|Texniki avadanlıq|Proqram təminatı"
+                       r"|IT Helpdesk|1C inzibatçısı|Məlumat analitikası|application developer|Kibertəhlükəsizlik")
+EXCLUDE_PATTERN = (r"^satış|kredit|lombard|marketinq|marketing|smm|sürücü|anbar|mühasib|hüquq|\bmep\b|qa/qc|usta|kassir|tikinti|smeta|hovuz|havalandırma|mexanik|lokomotiv|avtoelektrik|konsolidasiya"
+                   r"|mobiloqraf|mobilqraf|reels|videoqraf|video creator|сотрудник бара|laborator|investisiya|financial"
+                   r"|maliyyə və kommersiya|mağaza|stomatoloq|stomatoloji|korporativ satış|ofis inzibatçı|qeydiyyat üzrə")
 
 SKILLS = {
     "SQL": r"\bsql\b|t-sql|pl/sql",
@@ -85,15 +88,15 @@ ROLE_FAMILIES = [
     ("Business Analyst", r"biznes analitik|business analyst|biznes analitika|sistem analitik|system analyst"),
     ("Reporting / Financial Analyst", r"hesabat|reporting|investment|büdcə"),
     ("Data Analyst", r"data mütəxəssis|data analitik|data analyst|data analitika|məlumat bazası|analitik|analyst"),
-    ("ERP / 1C / CRM", r"\b1c\b|\bsap\b|\berp\b|\bcrm\b|odoo|bitrix"),
+    ("ERP / 1C / CRM", r"\b1c\b|\b1с|\bsap\b|\berp\b|\bcrm\b|odoo|bitrix"),
     ("Mobile Developer", r"\bmobil.*(developer|proqramçı|tərtibatçı)|android|\bios\b|flutter|kotlin|swift"),
     ("Frontend Developer", r"frontend|front-end|react|angular|\bvue"),
     ("Full-stack Developer", r"full[\s-]?stack"),
     ("Backend Developer", r"backend|back-end|\.net|\bjava\b|python|\bphp\b|golang|\bnode"),
     ("Software Developer", r"developer|proqramçı|proqramist|proqramlaşdır|tərtibatçı|software|programmer|proqram təminatı"),
     ("UI/UX Design", r"ui/ux|\bux\b|\bui\b|product designer|web dizayner|veb dizayner"),
-    ("System / Network Admin", r"sistemlərinin idarə|voip|asterisk|infrastruktur|inzibatçı|sistem idarə|sistem administrator|system administrator|şəbəkə|network|sistem mühəndisi|system engineer"),
-    ("IT Support / Hardware", r"texnik|zəif axın|cctv|avadanlıq|компьют|ремонт|texniki dəstək|help ?desk|technical support|service desk|elektronika|\bit support|\bit mütəxəssis|\bit üzrə mütəxəssis|\bit specialist"),
+    ("System / Network Admin", r"database administrator|\bdba\b|sistemlərinin idarə|voip|asterisk|infrastruktur|sistem inzibatçı|sistem idarə|sistem administrator|system administrator|şəbəkə|network|sistem mühəndisi|system engineer"),
+    ("IT Support / Hardware", r"texnik|zəif axın|cctv|avadanlıq|компьют|ремонт|texniki dəstək|help ?desk|technical support|service desk|elektronika|\bit support|\bit mütəxəssis|\bit üzrə|\bit coordinator|informasiya texnologiyaları üzrə|\bit specialist"),
     ("Product / Project", r"product owner|product manager|məhsul meneceri|məhsul sahibi|scrum master|delivery manager|layihə|project"),
 ]
 
@@ -133,6 +136,16 @@ def min_experience_years(text: str) -> float | None:
     return min(years) if years else None
 
 
+WORK_FORMATS = [
+    ("Remote", r"\bremote\b|uzaqdan|distansion|onlayn iş|tam uzaqdan|work from home"),
+    ("Hibrid", r"hibrid|hybrid"),
+]
+
+
+def work_format(text: str) -> str:
+    return first_match(text, WORK_FORMATS, default="Ofis")
+
+
 def salary_disclosed(salary_raw: str) -> bool:
     return bool(re.search(r"\d", salary_raw or ""))
 
@@ -152,6 +165,7 @@ def build_features(raw: pd.DataFrame) -> pd.DataFrame:
     df["role_family"] = df["title"].apply(lambda t: first_match(t, ROLE_FAMILIES))
     df["seniority"] = df["title"].apply(lambda t: first_match(t, SENIORITY))
     df["min_experience_years"] = text.apply(min_experience_years)
+    df["work_format"] = text.apply(work_format)
     df["salary_disclosed"] = df["salary_raw"].apply(salary_disclosed)
     parsed = df["salary_raw"].apply(parse_salary)
     df["salary_from"] = df["salary_from"] if "salary_from" in df else parsed.str[0]
@@ -162,5 +176,21 @@ def build_features(raw: pd.DataFrame) -> pd.DataFrame:
     df["id"] = df["slug"].str.strip()
     df["category"] = df["category"].str.replace(r"^Ana səhifə > Vakansiyalar > ", "", regex=True)
     columns = ["id", "title", "company", "category", "date_posted", "valid_through", "city",
-               "role_family", "seniority", "min_experience_years", "salary_disclosed", "salary_from", "salary_to"]
+               "role_family", "seniority", "min_experience_years", "work_format", "salary_disclosed", "salary_from", "salary_to"]
     return pd.concat([df[columns], skills], axis=1).reset_index(drop=True)
+
+
+LEGAL_SUFFIX = r"\b(asc|qsc|mmc|llc|ojsc|cjsc|ltd|llp|inc|jsc|şirkəti|şirkət|company|group|azerbaijan|azərbaycan)\b"
+AZ_TRANSLIT = str.maketrans("əğıöüşçƏĞIİÖÜŞÇ", "egiouscegiiousc")
+
+
+def normalize(text: str) -> str:
+    text = (text or "").translate(AZ_TRANSLIT).lower().replace("sh", "s").replace("ch", "c")
+    text = re.sub(LEGAL_SUFFIX, " ", text)
+    return re.sub(r"[^a-z0-9а-я]+", "", text)
+
+
+def duplicate_key(title: str, company: str) -> str:
+    company_key = normalize(company)
+    title_key = normalize(title).replace(company_key, "") if company_key else normalize(title)
+    return f"{company_key}|{title_key}"
