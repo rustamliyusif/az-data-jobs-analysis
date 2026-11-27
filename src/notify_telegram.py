@@ -58,7 +58,7 @@ def build_messages(date: str, rows: pd.DataFrame) -> list[str]:
 
 WELCOME = (
     "👋 <b>AZ IT Vakansiyaları</b>\n\n"
-    "Hər gün səhər hellojob.az və boss.az-da yeni çıxan IT vakansiyaları burada paylaşılır.\n\n"
+    "Hər gün səhər saat 08:00 radələrində hellojob.az və boss.az-da yeni çıxan IT vakansiyaları burada paylaşılır.\n\n"
     f"📊 Bacarıqlar, maaşlar və bütün vakansiyalar: {DASHBOARD}"
 )
 
