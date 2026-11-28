@@ -2,7 +2,7 @@
   "hellojob": {
     "date": "2026-11-28",
     "active_listings": 634,
-    "downloaded": 22,
+    "downloaded": 0,
     "it_active": 104
   },
   "boss": {
@@ -14,7 +14,7 @@
   "busy": {
     "date": "2026-11-28",
     "active_listings": 1398,
-    "downloaded": 3,
+    "downloaded": 0,
     "it_active": 65
   },
   "history_total": 194
