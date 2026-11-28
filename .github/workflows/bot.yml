@@ -36,7 +36,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898699+github-actions[bot]@users.noreply.github.com"
-          git add data/bot_state.enc data/processed/salary_survey.csv data/processed/bot.json
+          git add -A data
           git diff --cached --quiet && exit 0
           git commit -m "Bot state update"
           for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done
