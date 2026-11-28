@@ -61,6 +61,8 @@ src/features.py       filter IT roles by title → 18 role families, seniority, 
 src/build_dataset.py  new vacancies → features; active ids → last_seen; writes vacancies_history.csv and seen_ids.csv
 app/streamlit_app.py  dashboard: skills, vacancy search, junior roles, what-to-learn analysis, salaries, employers, trend
 src/notify_telegram.py  posts each day's new IT vacancies to a Telegram channel
+src/bot.py            Telegram bot: personal daily alerts by skill (/skills) and an anonymous salary survey (/maas);
+                      subscriber data is encrypted (data/bot_state.enc), only groups with 5+ answers are published
 .github/workflows/scrape.yml   daily scrape + dataset update, commits changes back to the repo
 notebooks/analysis.ipynb   charts and conclusions
 ```

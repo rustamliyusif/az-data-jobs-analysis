@@ -1,3 +1,4 @@
+import json
 import re
 import sys
 from pathlib import Path
@@ -11,6 +12,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from features import SKILLS
 
 HISTORY_PATH = ROOT / "data" / "processed" / "vacancies_history.csv"
+SURVEY_PATH = ROOT / "data" / "processed" / "salary_survey.csv"
+BOT_INFO_PATH = ROOT / "data" / "processed" / "bot.json"
 SKILL_COLUMNS = list(SKILLS)
 LANGUAGES = ["English", "Russian"]
 TECH_COLUMNS = [c for c in SKILL_COLUMNS if c not in LANGUAGES]
@@ -51,6 +54,8 @@ st.html(f"""
               font-size: 1.35rem; margin-bottom: .15rem; }}
   .ask {{ font-family: 'Unbounded', sans-serif; font-weight: 500; font-size: 1.25rem; margin: 1.6rem 0 .1rem 0;
           color: {C['ink']}; }}
+  .botline {{ color: {C['muted']}; font-size: .98rem; margin: .5rem 0 0 0; max-width: 70ch; }}
+  .botline a {{ color: {C['caspian']}; font-weight: 600; }}
   .foot {{ color: {C['muted']}; font-size: .9rem; }}
   .foot a {{ color: {C['caspian']}; }}
   @media (max-width: 640px) {{ .verdict {{ font-size: 1.05rem; }} }}
@@ -165,6 +170,8 @@ def best_next(pool: pd.DataFrame, skills: list[str]) -> tuple[str | None, int]:
 
 
 df = load(HISTORY_PATH.stat().st_mtime)
+bot_username = json.loads(BOT_INFO_PATH.read_text()).get("username", "") if BOT_INFO_PATH.exists() else ""
+bot_link = f'<a href="https://t.me/{bot_username}" target="_blank">@{bot_username}</a>' if bot_username else "Telegram botumuz"
 latest = df["last_seen"].max()
 active = deduplicate(df[df["last_seen"] == df.groupby("source")["last_seen"].transform("max")])
 
@@ -220,6 +227,8 @@ if mine:
     st.html(f'<p class="verdict">Bu bacarıqlarla <b>{ready}</b> vakansiyanın tələblərinin ən azı yarısını qarşılayırsan.{next_line}</p>')
 else:
     st.html('<p class="verdict">Yuxarıdan ən azı bir bacarıq seç.</p>')
+st.html(f'<p class="botline">Hər səhər sənə uyğun yeni vakansiyaları Telegram-da almaq üçün {bot_link}-a '
+        '<code>/skills SQL, Python</code> kimi bacarıqlarını yaz.</p>')
 
 top_skill = demand.index[0]
 recent = int((view["posted"] >= latest - pd.Timedelta(days=7)).sum())
@@ -328,6 +337,17 @@ with tab_learn:
         )
 
 with tab_salary:
+    survey = pd.read_csv(SURVEY_PATH) if SURVEY_PATH.exists() else pd.DataFrame()
+    st.markdown("**İşçilərin anonim cavabları**")
+    if survey.empty:
+        st.caption(f"Hələ kifayət qədər cavab yoxdur. Hər qrup üçün ən azı 5 cavab toplananda burada median maaşlar görünəcək. "
+                   f"Sən də töhfə ver: {('@' + bot_username) if bot_username else 'Telegram botumuza'} "
+                   "<code>/maas Data Analyst, Junior, 1, 1200</code> yaz.".replace("<code>", "`").replace("</code>", "`"))
+    else:
+        st.caption("Telegram botu ilə anonim toplanan aylıq net maaşlar. Yalnız ən azı 5 cavab olan qruplar göstərilir.")
+        st.dataframe(survey.rename(columns={"role": "Rol", "level": "Səviyyə", "n": "Cavab", "median": "Median ₼",
+                                            "p25": "25%", "p75": "75%"}), hide_index=True, width="stretch")
+    st.markdown("**Elanlarda göstərilən maaşlar**")
     paid = view.dropna(subset=["salary_mid"])
     st.caption(f"Maaş yalnız {len(paid)} vakansiyada göstərilib ({len(paid) / len(view) * 100:.0f}%). "
                "Rəqəmlər bu elanlara əsaslanır və bütün bazarı təmsil etməyə bilər.")
