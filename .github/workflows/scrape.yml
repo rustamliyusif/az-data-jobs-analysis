@@ -82,7 +82,7 @@ jobs:
           BOT_STATE_KEY: ${{ secrets.BOT_STATE_KEY }}
         run: |
           python src/bot.py digest
-          git add data/bot_state.enc
+          git add -A data
           git diff --cached --quiet && exit 0
           git commit -m "Bot state update"
           for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done

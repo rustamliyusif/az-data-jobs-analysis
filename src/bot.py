@@ -242,7 +242,7 @@ def main() -> None:
         write_survey(state)
     else:
         digest(bot, state)
-    if json.dumps(state, sort_keys=True) != before:
+    if json.dumps(state, sort_keys=True) != before or not STATE_PATH.exists():
         save_state(state, key.encode())
         print("State updated")
 
